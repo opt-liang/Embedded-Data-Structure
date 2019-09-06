@@ -1,16 +1,27 @@
+#ifndef __LIST__H__
+#define __LIST__H__
 #include "stdlib.h"
-#include "stdio.h"
 #include "string.h"
 #include "stdint.h"
 #include "stdbool.h"
 
+#define MAX_QUEUE		10
+
+#define	HIGH_PRIORITY		0
+#define MEDIUM_PRIORITY		1
+#define LOW_PRIORITY		2
+
+
 typedef uint16_t DataType;
 
-typedef struct{
-      uint8_t         buff[64];
-      uint16_t        len;
-      DataType        key;
-}Frame_Elem;
+typedef struct RadioFrame_t{
+	bool duplicate;
+	bool confirmFrame;
+	uint16_t key;
+	uint16_t priority;
+	uint8_t	buff[16];
+	uint32_t len;
+}RadioFrame;
 
 typedef struct Link{
     void *data;
@@ -23,50 +34,56 @@ bool delElemByIndex( link * p, void **data, int16_t index );
 bool delElemByKey( link * head, void **data, DataType key );
 int16_t selectElem( link* p, DataType data );
 bool isEmpty( link * p );
-bool delElemFromEnd( link * head, void **data );
+bool delElemFromRear( link * head, void **data );
 bool isEmptyStack( link *head );
 bool stackPop( link *head, void **data );
 bool stackPush( link* head, void* data );
 bool isEmptyQueue( link *head );
-bool deleteQueueByPriority( link *head, void **data, DataType priorityMax, DataType priorityMin );
 bool deleteQueue( link *head, void **data );
-bool enterQueue( link* head, void* data );
-bool deleteQueueByMsg( link * head, void **data, DataType msg );
+bool enterQueueByRear( link* head, void* data );
+bool deleteQueueByKey( link * head, void **data, DataType msg );
+bool deleteQueueByPriority( link *head, void **data, DataType priorityMax, DataType priorityMin );
+uint16_t getQueueSum( link * head );
+uint16_t getStackSum( link * head );
+bool enterQueueByFront( link* head, void* data );
+#endif
 
-#define CriticalRegionEnter             //__disable_irq()
-#define CriticalRegionExit              //__enable_irq()
+#include "list.h"
+
+#define ENTER_CRITICAL		(__disable_irq())
+#define EXIT_CRITICAL		(__enable_irq())
 
 link* initLink( void ){
-	CriticalRegionEnter;
-	link* head = ( link* ) malloc ( sizeof ( link ) );
+	ENTER_CRITICAL;
+    link* head = ( link* ) malloc ( sizeof ( link ) );
 	if( head ){
 		head->next = NULL;
-		CriticalRegionExit;
+		EXIT_CRITICAL;
 		return head;
 	}
-	CriticalRegionExit;
+	EXIT_CRITICAL;
 	return NULL;
 }
 
 bool insertElem( link* head, void* data, uint16_t index ){
-	CriticalRegionEnter;
-	link * handle = head;
-	for( int16_t i = 1; i < index; i++ ){
-		if( handle->next == NULL ){
-			CriticalRegionExit;
-			return false;
-		}
-		handle = handle->next;
-	}
+	ENTER_CRITICAL;
+    link * handle = head;
+    for( int16_t i = 1; i < index; i++ ){
+        if( handle->next == NULL ){
+			EXIT_CRITICAL;
+            return false;
+        }
+        handle = handle->next;
+    }
 	link* node = ( link* ) malloc ( sizeof ( link ) );
 	if( node ){
 		node->data = data;
 		node->next = handle->next;
 		handle->next = node;
-		CriticalRegionExit;
+		EXIT_CRITICAL;
 		return true;
 	}
-	CriticalRegionExit;
+	EXIT_CRITICAL;
 	return false;
 
 }
@@ -75,132 +92,187 @@ bool delElemByIndex( link * head, void **data, int16_t index ){
 	if( index == -1 ){
 		return false;
 	}
-	CriticalRegionEnter;
-	link* handle = head;
-	for( int16_t i = 1; i < index; i++ ){
-		if( handle->next == NULL ){
-			CriticalRegionExit;
-			return false;
-		}
-		handle = handle->next;
-	}
+	ENTER_CRITICAL;
+    link* handle = head;
+    for( int16_t i = 1; i < index; i++ ){
+        if( handle->next == NULL ){
+			EXIT_CRITICAL;
+            return false;
+        }
+        handle = handle->next;
+    }
 	if( handle->next ){
 		link* del = handle->next;
 		*data = del->data;
 		handle->next = handle->next->next;
 		free( del );
-		CriticalRegionExit;
+		EXIT_CRITICAL;
 		return true;
 	}
-	CriticalRegionExit;
+	EXIT_CRITICAL;
 	return false;
 }
 
-int16_t selectElem( link* head, DataType key ){
-	CriticalRegionEnter;
-	link* handle = head;
-	int16_t i = 1;
-	while( handle->next ){
-		handle = handle->next;
-		if( ((Frame_Elem *)handle->data)->key == key ){
-			CriticalRegionExit;
-			return i;
-		}
-		i++;
-	}
-	CriticalRegionExit;
-	return -1;
+int16_t selectElemByKeyOrPriority( link* head, bool iskey, uint16_t type ){
+	ENTER_CRITICAL;
+    link* handle = head;
+    int16_t i = 1;
+    while( handle->next ){
+        handle = handle->next;
+        if( iskey ? (((RadioFrame *)handle->data)->key == type) : (((RadioFrame *)handle->data)->priority == type) ){
+			EXIT_CRITICAL;
+            return i;
+        }
+        i++;
+    }
+	EXIT_CRITICAL;
+    return -1;
 }
 
-bool delElemByKey( link * head, void **data, DataType key ){
-	CriticalRegionEnter;
-	static uint8_t* index = NULL;
-	if( delElemByIndex( head, ( void **)(&index), selectElem( head, key ) ) ){
+bool delElemByKeyOrPriority( link * head, bool iskey, void **data, uint16_t type ){
+	ENTER_CRITICAL;
+	uint8_t* index = NULL;
+	if( delElemByIndex( head, ( void **)(&index), selectElemByKeyOrPriority( head, iskey, type ) ) ){
 		*data = index;
-		CriticalRegionExit;
+		EXIT_CRITICAL;
 		return true;
 	}
-	CriticalRegionExit;
+	EXIT_CRITICAL;
 	return false;
 }
 
-bool delElemFromEnd( link * head, void **data ){
-	CriticalRegionEnter;
-	link* handle = head;
-
+bool delElemFromRear( link * head, void **data ){
+	ENTER_CRITICAL;
+    link* handle = head;
+	
 	if( handle->next == NULL ){
-		CriticalRegionExit;
+		EXIT_CRITICAL;
 		return false;
 	}
-
-	while( true ){
-		if( handle->next != NULL && handle->next->next == NULL ){
+	
+    while( true ){
+        if( handle->next != NULL && handle->next->next == NULL ){
 			break;
-		}
-		handle = handle->next;
-	}
-
+        }
+        handle = handle->next;
+    }
+	
 	if( handle->next ){
 		link* del = handle->next;
 		*data = del->data;
 		handle->next = handle->next->next;
 		free( del );
-		CriticalRegionExit;
+		EXIT_CRITICAL;
 		return true;
 	}
-	CriticalRegionExit;
+	EXIT_CRITICAL;
 	return false;
+}
+
+uint16_t getElemSum( link * head ){
+	ENTER_CRITICAL;
+	uint16_t sum = 0;
+    link* handle = head;
+	
+	if( handle->next == NULL ){
+		EXIT_CRITICAL;
+		return 0;
+	}
+	
+    while( true ){
+		sum ++;
+        if( handle->next != NULL && handle->next->next == NULL ){
+			break;
+        }
+        handle = handle->next;
+    }
+	
+	if( handle->next ){
+		EXIT_CRITICAL;
+		return sum;
+	}
+	EXIT_CRITICAL;
+	return 0;
 }
 
 bool isEmpty( link* head ){
-	CriticalRegionEnter;
-	if( head->next != NULL ){
-		CriticalRegionExit;
+	ENTER_CRITICAL;
+	if( head->next == NULL ){
+		EXIT_CRITICAL;
 		return true;
 	}
-	CriticalRegionExit;
+	EXIT_CRITICAL;
 	return false;
 }
 
 /***********************************************************************/
 
-bool enterQueue( link* head, void* data ){
+bool enterQueueByRear( link* head, void* data ){
+	
+	ENTER_CRITICAL;
+	if( getQueueSum( head ) > MAX_QUEUE ){
+		void *data = NULL;
+		if( deleteQueueByPriority( head, &data, HIGH_PRIORITY, LOW_PRIORITY ) ){
+			free( data );
+		}
+	}
+	EXIT_CRITICAL;
+	
 	if( insertElem( head, data, 0 ) ){
 		return true;
 	}
 	return false;
 }
 
+bool enterQueueByFront( link* head, void* data ){
+	ENTER_CRITICAL;
+	uint16_t index = getQueueSum( head );
+	if( insertElem( head, data, index < MAX_QUEUE ? index : 0 ) ){
+		EXIT_CRITICAL;
+		return true;
+	}
+	EXIT_CRITICAL;
+	return false;
+}
+
+
 bool deleteQueue( link *head, void **data ){
-	if( delElemFromEnd( head, data ) ){
+	if( delElemFromRear( head, data ) ){
 		return true;
 	}
 	return false;
 }
 
-bool deleteQueueByMsg( link * head, void **data, DataType msg ){
-	if( delElemByKey( head, data, msg ) ){
+bool deleteQueueByKey( link * head, void **data, DataType msg ){
+	if( delElemByKeyOrPriority( head, true, data, msg ) ){
 		return true;
 	}
 	return false;
 }
 
 bool deleteQueueByPriority( link *head, void **data, DataType priorityMin, DataType priorityMax ){
+	ENTER_CRITICAL;
 	if( priorityMax >= priorityMin ){
 		for( int32_t i = priorityMax; i >= priorityMin; i -- ){
-			if( delElemByKey( head, data, i ) ){
+			if( delElemByKeyOrPriority( head, false, data, i ) ){
+				EXIT_CRITICAL;
 				return true;
 			}
 		}
 	}else{
 		for( int32_t i = priorityMax; i <= priorityMin; i ++ ){
-			if( delElemByKey( head, data, i ) ){
+			if( delElemByKeyOrPriority( head, false, data, i ) ){
+				EXIT_CRITICAL;
 				return true;
 			}
 		}
 	}
-
+	EXIT_CRITICAL;
 	return false;
+}
+
+uint16_t getQueueSum( link * head ){
+	return getElemSum( head );
 }
 
 bool isEmptyQueue( link *head ){
@@ -226,6 +298,10 @@ bool stackPop( link *head, void **data ){
 	return false;
 }
 
+uint16_t getStackSum( link * head ){
+	return getElemSum( head );
+}
+
 bool isEmptyStack( link *head ){
 	if( isEmpty( head ) ){
 		return true;
@@ -233,159 +309,6 @@ bool isEmptyStack( link *head ){
 	return false;
 }
 
-/***********************************************************************/
-
-int main(void)
-{
-		static Frame_Elem *index;
-		link* LINK;
-		LINK = initLink();
-		index = NULL;
-
-		for( uint8_t i = 0; i < 100; i ++ ){
-			index = ( Frame_Elem *)malloc( sizeof(Frame_Elem) );
-			if( index ){
-				index->key = i;
-				if( !insertElem( LINK, index, 0 ) ){
-					free( index );
-				}
-			}
-		}
-
-        static DataType temp = 0;
-        for( uint8_t i = 50; i <= 70; i ++ ){
-            temp = i;
-            if( delElemByKey( LINK, (void **)&index, temp ) ){
-                free( index );
-            }
-        }
-
-        for( uint8_t i = 0; i < 100; i ++ ){
-			index = NULL;
-			if( delElemByIndex( LINK, ( void **)(&index), 0 ) ){
-				printf( "delete elem[%d]\r\n", index->key );
-				free( index );
-			}
-        }
-
-        while( true ){
-
-        #if 0
-
-			for( uint8_t i = 0; i < 100; i ++ ){
-				index = ( Frame_Elem *)malloc( sizeof(Frame_Elem) );
-				if( index ){
-					index->key = i;
-					if( !insertElem( LINK, index, 0 ) ){
-						free( index );
-					}
-				}
-			}
-
-			for( uint8_t i = 0; i < 100; i ++ ){
-				index = NULL;
-				if( delElemByIndex( LINK, ( void **)(&index), 0 ) ){
-					printf( "delete elem[%d]\r\n", index->key );
-					free( index );
-				}
-			}
-			
-			for( uint8_t i = 0; i < 100; i ++ ){
-				index = ( Frame_Elem *)malloc( sizeof(Frame_Elem) );
-				if( index ){
-					index->key = i;
-					if( !insertElem( LINK, index, 0 ) ){
-						free( index );
-					}
-				}
-			}
-			
-			for( uint8_t i = 0; i < 100; i ++ ){
-				index = NULL;
-				if( delElemFromEnd( LINK, ( void **)(&index) ) ){
-					printf( "delete elem[%d]\r\n", index->key );
-					free( index );
-				}
-			}
-
-         #elif 1
-
-			for( uint8_t i = 0; i < 100; i ++ ){
-				index = ( Frame_Elem *)malloc( sizeof(Frame_Elem) );
-				if( index ){
-					index->key = i;
-					if( !enterQueue( LINK, index ) ){
-						free( index );
-					}
-				}
-			}
-
-			for( uint8_t i = 0; i < 100; i ++ ){
-				 index = NULL;
-				 if( deleteQueue( LINK, ( void **)(&index) ) ){
-					 printf( "delete elem[%d]\r\n", index->key );
-					 free( index );
-				 }
-			}
-			 
-			for( uint8_t i = 0; i < 100; i ++ ){
-				index = ( Frame_Elem *)malloc( sizeof(Frame_Elem) );
-				if( index ){
-					index->key = i;
-					if( !enterQueue( LINK, index ) ){
-						free( index );
-					}
-				}
-			}
-			
-			for( int8_t i = 0; i <= 100; i ++ ){
-				 index = NULL;
-				 if( deleteQueueByMsg( LINK, ( void **)(&index), i ) ){
-					 printf( "delete elem[%d]\r\n", index->key );
-					 free( index );
-				 }
-			}
-			 
-			for( uint8_t i = 0; i < 100; i ++ ){
-				index = ( Frame_Elem *)malloc( sizeof(Frame_Elem) );
-				if( index ){
-					index->key = i;
-					if( !enterQueue( LINK, index ) ){
-							free( index );
-					}
-				}
-			}
-			
-			for( int8_t i = 0; i <= 100; i ++ ){
-				index = NULL;
-				if( deleteQueueByPriority( LINK, ( void **)(&index), 0, 100 ) ){
-					printf( "delete elem[%d]\r\n", index->key );
-					free( index );
-				}
-			}
-
-        #else
-
-			for( uint8_t i = 0; i < 100; i ++ ){
-				index = ( Frame_Elem *)malloc( sizeof(Frame_Elem) );
-				if( index ){
-					index->key = i;
-					if( !stackPush( LINK, index ) ){
-						free( index );
-					}
-				}
-			}
-
-			for( int8_t i = 100; i >= 0; i -- ){
-				index = NULL;
-				if( stackPop( LINK, ( void **)(&index) ) ){
-					printf( "delete elem[%d]\r\n", index->key );
-					free( index );
-				}
-			}
-
-        #endif
 
 
-        }
-}
+
