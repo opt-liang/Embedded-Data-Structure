@@ -1,7 +1,7 @@
 #include "list.h"
 
-#define ENTER_CRITICAL		(__disable_irq())
-#define EXIT_CRITICAL		(__enable_irq())
+#define ENTER_CRITICAL		//(__disable_irq())
+#define EXIT_CRITICAL		//(__enable_irq())
 
 link* initLink( void ){
 	ENTER_CRITICAL;
@@ -72,7 +72,7 @@ int16_t selectElemByKey( link* head, uint16_t type ){
     int16_t i = 1;
     while( handle->next ){
         handle = handle->next;
-        if( ((RadioFrame *)handle->data)->key == type ){
+        if( ((DataFrame *)handle->data)->key == type ){
 			EXIT_CRITICAL;
             return i;
         }
@@ -99,11 +99,11 @@ int16_t selectElemByPriority( link* head, uint16_t min_priority, uint16_t max_pr
 		stat = false;
 	}
 	
-	current_max_priority = ((RadioFrame *)handle->next->data)->priority;
+	current_max_priority = ((DataFrame *)handle->next->data)->priority;
 	
     while( handle->next ){
         handle = handle->next;
-		uint16_t current_priority = ((RadioFrame *)handle->data)->priority;
+		uint16_t current_priority = ((DataFrame *)handle->data)->priority;
 		if( stat ){
 			if( current_priority <= max_priority && current_priority >= min_priority ){
 				if( current_max_priority <= current_priority ){

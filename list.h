@@ -5,7 +5,7 @@
 #include "stdint.h"
 #include "stdbool.h"
 
-#define MAX_QUEUE		10
+#define MAX_QUEUE		1000
 
 #define	HIGH_PRIORITY		0
 #define MEDIUM_PRIORITY		1
@@ -16,14 +16,14 @@
 
 typedef uint16_t DataType;
 
-typedef struct RadioFrame_t{
+typedef struct DataFrame_t{
 	bool duplicate;
 	bool confirmFrame;
 	uint16_t key;
 	uint16_t priority;
 	uint8_t	buff[16];
 	uint32_t len;
-}RadioFrame;
+}DataFrame;
 
 typedef struct Link{
     void *data;
