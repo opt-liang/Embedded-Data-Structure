@@ -66,7 +66,7 @@ bool delElemByIndex( link * head, void **data, int16_t index ){
 	return false;
 }
 
-int16_t selectElemByKey( link* head, uint16_t type ){
+int16_t selectElemByKey( link* head, DataType type ){
 	ENTER_CRITICAL;
     link* handle = head;
     int16_t i = 1;
@@ -127,7 +127,7 @@ int16_t selectElemByPriority( link* head, uint16_t min_priority, uint16_t max_pr
     return max_priority_index;
 }
 
-bool delElemByKey( link * head, void **data, uint16_t type ){
+bool delElemByKey( link * head, void **data, DataType type ){
 	ENTER_CRITICAL;
 	uint8_t* handle = NULL;
 	if( delElemByIndex( head, ( void **)(&handle), selectElemByKey( head, type ) ) ){
@@ -139,7 +139,7 @@ bool delElemByKey( link * head, void **data, uint16_t type ){
 	return false;
 }
 
-bool delElemByPriority( link * head, void **data, uint16_t min_priority, uint16_t max_priority ){
+bool delElemByPriority( link * head, void **data, DataType min_priority, DataType max_priority ){
 	ENTER_CRITICAL;
 	uint8_t* handle = NULL;
 	if( delElemByIndex( head, ( void **)(&handle), selectElemByPriority( head, min_priority, max_priority ) ) ){
