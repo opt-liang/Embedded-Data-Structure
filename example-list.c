@@ -1,6 +1,11 @@
 #include<stdio.h>
 #include "list.h"
 
+// #include <pthread.h>
+// pthread_mutex_t mx_concent = PTHREAD_MUTEX_INITIALIZER;
+// #define LOCK				pthread_mutex_lock(&mx_concent)
+// #define UNLOCK				pthread_mutex_unlock(&mx_concent)
+
 void main( void )
 {
     link* list = initLink();

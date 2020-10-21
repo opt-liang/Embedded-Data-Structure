@@ -4,6 +4,7 @@
 #define EXIT_CRITICAL		//(__enable_irq())
 
 link* initLink( void ){
+	
 	ENTER_CRITICAL;
     link* head = ( link* ) malloc ( sizeof ( link ) );
 	if( head ){
