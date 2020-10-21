@@ -66,13 +66,24 @@ bool delElemByIndex( link * head, void **data, int16_t index ){
 	return false;
 }
 
-int16_t selectElemByKey( link* head, DataType type ){
+bool keyCompare( DataType oriKey, DataType desKey){
+	// if( oriKey == desKey ){
+	// 	return true;
+	// }
+	// return false;
+	if( strncmp(oriKey,desKey,strlen(oriKey)) == 0 ){
+		return true;
+	}
+	return false;
+}
+
+int16_t selectElemByKey( link* head, DataType key ){
 	ENTER_CRITICAL;
     link* handle = head;
     int16_t i = 1;
     while( handle->next ){
         handle = handle->next;
-        if( ((DataFrame *)handle->data)->key == type ){
+        if( keyCompare(((DataFrame *)handle->data)->key,key) ){
 			EXIT_CRITICAL;
             return i;
         }
@@ -127,10 +138,10 @@ int16_t selectElemByPriority( link* head, uint16_t min_priority, uint16_t max_pr
     return max_priority_index;
 }
 
-bool delElemByKey( link * head, void **data, DataType type ){
+bool delElemByKey( link * head, void **data, DataType key ){
 	ENTER_CRITICAL;
 	uint8_t* handle = NULL;
-	if( delElemByIndex( head, ( void **)(&handle), selectElemByKey( head, type ) ) ){
+	if( delElemByIndex( head, ( void **)(&handle), selectElemByKey( head, key ) ) ){
 		*data = handle;
 		EXIT_CRITICAL;
 		return true;
@@ -139,7 +150,7 @@ bool delElemByKey( link * head, void **data, DataType type ){
 	return false;
 }
 
-bool delElemByPriority( link * head, void **data, DataType min_priority, DataType max_priority ){
+bool delElemByPriority( link * head, void **data, uint16_t min_priority, uint16_t max_priority ){
 	ENTER_CRITICAL;
 	uint8_t* handle = NULL;
 	if( delElemByIndex( head, ( void **)(&handle), selectElemByPriority( head, min_priority, max_priority ) ) ){
@@ -262,14 +273,14 @@ bool deleteQueue( link *head, void **data ){
 	return false;
 }
 
-bool deleteQueueByKey( link * head, void **data, DataType msg ){
-	if( delElemByKey( head, data, msg ) ){
+bool deleteQueueByKey( link * head, void **data, DataType key ){
+	if( delElemByKey( head, data, key ) ){
 		return true;
 	}
 	return false;
 }
 
-bool deleteQueueByPriority( link *head, void **data, DataType priorityMin, DataType priorityMax ){
+bool deleteQueueByPriority( link *head, void **data, uint16_t priorityMin, uint16_t priorityMax ){
 	ENTER_CRITICAL;
 	if( delElemByPriority( head, data, priorityMin, priorityMax ) ){
 		EXIT_CRITICAL;
