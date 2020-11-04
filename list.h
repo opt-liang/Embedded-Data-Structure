@@ -6,6 +6,8 @@
 #include "stdbool.h"
 
 #define MAX_QUEUE		(10240)
+#define MAX_BUFF_LEN	(128)
+#define MAX_KEY_LEN		(128)
 
 #define	HIGH_PRIORITY		0
 #define MEDIUM_PRIORITY		1
@@ -15,14 +17,16 @@
 #define MIN_PRIORITY		LOW_PRIORITY
 
 //typedef uint16_t DataType;
-typedef char* DataType;
+//typedef char* DataType;
+typedef char DataType[MAX_KEY_LEN];
 
 typedef struct DataFrame_t{
 	bool duplicate;
 	bool confirmFrame;
-	DataType key;
 	uint16_t priority;
-	uint8_t	buff[16];
+	uint32_t timestamp;
+	DataType key;
+	uint8_t	buff[MAX_BUFF_LEN];
 	uint32_t len;
 }DataFrame;
 
