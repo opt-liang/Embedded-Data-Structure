@@ -24,7 +24,7 @@ typedef struct DataFrame_t{
 	bool duplicate;
 	bool confirmFrame;
 	uint16_t priority;
-	uint32_t timestamp;
+	uint64_t timestamp;
 	DataType key;
 	uint8_t	buff[MAX_BUFF_LEN];
 	uint32_t len;

@@ -54,10 +54,9 @@ void main( void )
         data = (DataFrame *)malloc(sizeof(DataFrame));
         if( data )
         {
-            time( &timestamp );
+            time( &data->timestamp );
             memset( data->key, 0, sizeof(data->key) );
             sprintf( data->key, "%04x", i );
-            data->timestamp = timestamp;
             if( enterQueueByRear( list, data ) == false )
             {
                 free(data);
